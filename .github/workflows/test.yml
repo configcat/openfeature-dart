@@ -1,0 +1,69 @@
+name: Test
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'
+  push:
+    branches: [ '*' ]
+    paths-ignore:
+      - '**.md'
+      - 'examples/**'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'examples/**'
+    
+  workflow_dispatch:
+
+jobs:
+  analyze-format:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Dart
+      uses: dart-lang/setup-dart@v1
+
+    - name: Install dependencies
+      run: dart pub get
+
+    - name: Verify formatting
+      run: dart format --output=none --set-exit-if-changed .
+
+    - name: Analyze project source
+      run: dart analyze
+      
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        sdk-version: [ stable, beta, dev ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ matrix.sdk-version }}
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Run tests
+        run: dart test
+
+  publish-dry-run:
+    needs: [analyze-format, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Publish dry-run
+        run: dart pub publish --dry-run
