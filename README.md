@@ -1,1 +1,1 @@
-# ConfigCat OpenFeature Provider for Dart.
+# ConfigCat OpenFeature Provider for Dart
