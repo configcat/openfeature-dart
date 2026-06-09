@@ -7,10 +7,10 @@ repository: https://github.com/configcat/openfeature-dart
 issue_tracker: https://github.com/configcat/openfeature-dart/issues
 
 environment:
-  sdk: ^3.9.3
+  sdk: ^3.11.4
 
 dependencies:
-  openfeature_dart_server_sdk: ^0.0.13
+  openfeature_dart_server_sdk: ^0.0.22
   configcat_client: ^4.0.0
 
 dev_dependencies:

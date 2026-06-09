@@ -221,6 +221,13 @@ class ConfigCatProvider implements FeatureProvider {
   ConfigCatUser? _userFromContext(Map<String, dynamic>? context) {
     return {..._initialContext ?? {}, ...context ?? {}}.toUser();
   }
+
+  @override
+  Future<void> track(
+    String trackingEventName, {
+    Map<String, dynamic>? evaluationContext,
+    TrackingEventDetails? trackingDetails,
+  }) async {}
 }
 
 extension _Copy on ConfigCatOptions {

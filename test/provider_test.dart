@@ -3,31 +3,31 @@ import 'package:configcat_openfeature_provider/configcat_openfeature_provider.da
 import 'package:openfeature_dart_server_sdk/client.dart';
 import 'package:openfeature_dart_server_sdk/evaluation_context.dart';
 import 'package:openfeature_dart_server_sdk/feature_provider.dart';
-import 'package:openfeature_dart_server_sdk/hooks.dart';
+import 'package:openfeature_dart_server_sdk/open_feature_api.dart';
 import 'package:test/test.dart';
 
 import 'test_datasource.dart';
 
 void main() {
   late FeatureClient client;
-
-  setUp(() async {
-    final provider = ConfigCatProvider(
-      sdkKey: 'localhost',
-      options: ConfigCatOptions(
-        override: FlagOverrides(
-          dataSource: TestDatasource(),
-          behaviour: OverrideBehaviour.localOnly,
-        ),
+  final api = OpenFeatureAPI();
+  final provider = ConfigCatProvider(
+    sdkKey: 'localhost',
+    options: ConfigCatOptions(
+      override: FlagOverrides(
+        dataSource: TestDatasource(),
+        behaviour: OverrideBehaviour.localOnly,
       ),
-    );
-    await provider.initialize();
-    client = FeatureClient(
-      metadata: ClientMetadata(name: 'test-client'),
-      hookManager: HookManager(),
-      defaultContext: EvaluationContext(attributes: {}),
-      provider: provider,
-    );
+    ),
+  );
+
+  setUpAll(() async {
+    await api.setProviderAndWait(provider);
+    client = api.getClient('default');
+  });
+
+  tearDownAll(() async {
+    await api.shutdownProvider();
   });
 
   group('metadata tests', () {

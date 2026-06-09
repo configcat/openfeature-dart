@@ -19,16 +19,9 @@ Future<void> main() async {
     ),
   );
 
-  await OpenFeatureAPI().setProvider(provider);
+  await OpenFeatureAPI().setProviderAndWait(provider);
 
-  final client = FeatureClient(
-    metadata: ClientMetadata(name: 'my-app'),
-    hookManager: HookManager(),
-    defaultContext: EvaluationContext(
-      attributes: {'targetingKey': '#SOME-USER-ID#'},
-    ),
-    provider: OpenFeatureAPI().provider,
-  );
+  final client = OpenFeatureAPI().getClient('my-app');
 
   final isAwesomeFeatureEnabled = await client.getBooleanFlag(
     'isAwesomeFeatureEnabled',
@@ -47,5 +40,5 @@ Future<void> main() async {
 
   print('isPOCFeatureEnabled: $isPOCFeatureEnabled');
 
-  OpenFeatureAPI().provider.shutdown();
+  await OpenFeatureAPI().shutdownProvider();
 }
