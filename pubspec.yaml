@@ -10,7 +10,7 @@ environment:
   sdk: ^3.11.4
 
 dependencies:
-  openfeature_dart_server_sdk: ^0.0.22
+  openfeature_dart_server_sdk: ">=0.0.22 <0.2.0"
   configcat_client: ^4.0.0
 
 dev_dependencies:
