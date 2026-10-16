@@ -1,5 +1,5 @@
 import 'package:configcat_client/configcat_client.dart';
-import 'package:configcat_openfeature_provider/configcat_openfeature_provider.dart';
+import 'package:configcat_openfeature_server_provider/configcat_openfeature_server_provider.dart';
 import 'package:openfeature_dart_server_sdk/client.dart';
 import 'package:openfeature_dart_server_sdk/evaluation_context.dart';
 import 'package:openfeature_dart_server_sdk/feature_provider.dart';

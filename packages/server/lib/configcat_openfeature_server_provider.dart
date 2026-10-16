@@ -32,7 +32,6 @@ class ConfigCatProvider implements FeatureProvider {
   ProviderState _state = ProviderState.NOT_READY;
   Map<String, dynamic>? _initialContext;
   late final ConfigCatClient _client;
-  final Completer<void> _completer = Completer();
 
   /// Creates a new [ConfigCatProvider].
   ///
@@ -42,24 +41,7 @@ class ConfigCatProvider implements FeatureProvider {
     required String sdkKey,
     ConfigCatOptions options = ConfigCatOptions.defaultOptions,
   }) {
-    if (options.override?.behaviour == OverrideBehaviour.localOnly) {
-      _completer.complete();
-    }
-    final opts = options.copyWithHooks(
-      () => {
-        if (!_completer.isCompleted) {_completer.complete()},
-      },
-      (msg, [err, tr]) => {
-        if (!_completer.isCompleted)
-          {
-            _completer.completeError(
-              err ?? 'Provider initialization failed. $msg',
-              tr,
-            ),
-          },
-      },
-    );
-    _client = ConfigCatClient.get(sdkKey: sdkKey, options: opts);
+    _client = ConfigCatClient.get(sdkKey: sdkKey, options: options);
   }
 
   /// Gets the provider configuration.
@@ -187,16 +169,9 @@ class ConfigCatProvider implements FeatureProvider {
   /// [config] - Optional initialization context.
   @override
   Future<void> initialize([Map<String, dynamic>? config]) async {
-    try {
-      if (!_completer.isCompleted) {
-        await _completer.future;
-      }
-      _initialContext = config;
-      _state = ProviderState.READY;
-    } catch (error) {
-      _state = ProviderState.ERROR;
-      rethrow;
-    }
+    _initialContext = config;
+    await _client.waitForReady();
+    _state = ProviderState.READY;
   }
 
   /// Gets the provider metadata.
@@ -228,36 +203,6 @@ class ConfigCatProvider implements FeatureProvider {
     Map<String, dynamic>? evaluationContext,
     TrackingEventDetails? trackingDetails,
   }) async {}
-}
-
-extension _Copy on ConfigCatOptions {
-  ConfigCatOptions copyWithHooks(
-    Function() onClientReady,
-    Function(String, [dynamic error, StackTrace? stackTrace]) onError,
-  ) {
-    var newHooks = hooks;
-    if (newHooks == null) {
-      newHooks = Hooks(onClientReady: onClientReady, onError: onError);
-    } else {
-      newHooks.addOnClientReady(onClientReady);
-      newHooks.addOnError(onError);
-    }
-    return ConfigCatOptions(
-      hooks: newHooks,
-      baseUrl: baseUrl,
-      dataGovernance: dataGovernance,
-      pollingMode: pollingMode,
-      cache: cache,
-      logger: logger,
-      connectTimeout: connectTimeout,
-      receiveTimeout: receiveTimeout,
-      sendTimeout: sendTimeout,
-      httpClientAdapter: httpClientAdapter,
-      override: this.override,
-      defaultUser: defaultUser,
-      offline: offline,
-    );
-  }
 }
 
 extension ToUser on Map<String, dynamic> {
