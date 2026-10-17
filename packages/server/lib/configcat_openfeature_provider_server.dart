@@ -14,14 +14,9 @@ const _providerName = 'ConfigCatProvider';
 ///   sdkKey: '#YOUR-SDK-KEY#',
 /// );
 ///
-/// await OpenFeatureAPI().setProvider(provider);
+/// await OpenFeatureAPI().setProviderAndWait(provider);
 ///
-/// final client = FeatureClient(
-///   metadata: ClientMetadata(name: "my-app"),
-///   hookManager: HookManager(),
-///   defaultContext: EvaluationContext(attributes: {}),
-///   provider: OpenFeatureAPI().provider,
-/// );
+/// final client = OpenFeatureAPI().getClient('my-app');
 ///
 /// final isAwesomeFeatureEnabled = await client.getBooleanFlag(
 ///   'isAwesomeFeatureEnabled',
@@ -31,6 +26,7 @@ const _providerName = 'ConfigCatProvider';
 class ConfigCatProvider implements FeatureProvider {
   ProviderState _state = ProviderState.NOT_READY;
   Map<String, dynamic>? _initialContext;
+  bool _initialized = false;
   late final ConfigCatClient _client;
 
   /// Creates a new [ConfigCatProvider].
@@ -41,7 +37,15 @@ class ConfigCatProvider implements FeatureProvider {
     required String sdkKey,
     ConfigCatOptions options = ConfigCatOptions.defaultOptions,
   }) {
-    _client = ConfigCatClient.get(sdkKey: sdkKey, options: options);
+    final hooks = options.hooks ?? Hooks();
+    hooks.addOnConfigChanged(
+      (_, snapshot) => {
+        if (snapshot.cacheState != ClientCacheState.noFlagData && !_initialized)
+          {_initialized = true, _state = ProviderState.READY},
+      },
+    );
+    final opts = options.copyWith(hooks: hooks);
+    _client = ConfigCatClient.get(sdkKey: sdkKey, options: opts);
   }
 
   /// Gets the provider configuration.
@@ -134,7 +138,7 @@ class ConfigCatProvider implements FeatureProvider {
         FlagEvaluationResult.error(
           flagKey,
           defaultValue,
-          stringDetails.error?.toErrorCode() ?? ErrorCode.GENERAL,
+          stringDetails.errorCode.toErrorCode() ?? ErrorCode.GENERAL,
           stringDetails.error ?? 'Evaluation failed.',
           evaluatorId: _providerName,
         ),
@@ -170,8 +174,11 @@ class ConfigCatProvider implements FeatureProvider {
   @override
   Future<void> initialize([Map<String, dynamic>? config]) async {
     _initialContext = config;
-    await _client.waitForReady();
-    _state = ProviderState.READY;
+    final state = await _client.waitForReady();
+    if (state != ClientCacheState.noFlagData && !_initialized) {
+      _initialized = true;
+      _state = ProviderState.READY;
+    }
   }
 
   /// Gets the provider metadata.
@@ -205,6 +212,54 @@ class ConfigCatProvider implements FeatureProvider {
   }) async {}
 }
 
+extension ToEvalResult<T> on EvaluationDetails<T> {
+  FlagEvaluationResult<T> toEvalResult() {
+    return FlagEvaluationResult(
+      flagKey: key,
+      value: value,
+      variant: variationId,
+      evaluatedAt: DateTime.now(),
+      evaluatorId: _providerName,
+      errorCode: errorCode.toErrorCode(),
+      errorMessage: error,
+      reason: error == null ? 'DEFAULT' : 'ERROR',
+    );
+  }
+}
+
+extension WithValueEvalResult<T, N extends Map<String, dynamic>>
+    on EvaluationDetails<T> {
+  FlagEvaluationResult<N> toEvalResultWithJsonValue(N val) {
+    return FlagEvaluationResult(
+      flagKey: key,
+      value: val,
+      variant: variationId,
+      evaluatedAt: DateTime.now(),
+      evaluatorId: _providerName,
+      errorCode: errorCode.toErrorCode(),
+      errorMessage: error,
+      reason: error == null ? 'DEFAULT' : 'ERROR',
+    );
+  }
+}
+
+extension ToErrorCode on EvaluationErrorCode {
+  ErrorCode? toErrorCode() {
+    switch (this) {
+      case EvaluationErrorCode.none:
+        return null;
+      case EvaluationErrorCode.settingValueTypeMismatch:
+        return ErrorCode.TYPE_MISMATCH;
+      case EvaluationErrorCode.configJsonNotAvailable:
+        return ErrorCode.PARSE_ERROR;
+      case EvaluationErrorCode.settingKeyMissing:
+        return ErrorCode.FLAG_NOT_FOUND;
+      default:
+        return ErrorCode.GENERAL;
+    }
+  }
+}
+
 extension ToUser on Map<String, dynamic> {
   ConfigCatUser? toUser() {
     if (length == 0) {
@@ -234,48 +289,32 @@ extension ToUser on Map<String, dynamic> {
   }
 }
 
-extension _ToEvalResult<T> on EvaluationDetails<T> {
-  FlagEvaluationResult<T> toEvalResult() {
-    return FlagEvaluationResult(
-      flagKey: key,
-      value: value,
-      variant: variationId,
-      evaluatedAt: DateTime.now(),
-      evaluatorId: _providerName,
-      errorCode: error?.toErrorCode(),
-      errorMessage: error,
-      reason: error == null ? 'DEFAULT' : 'ERROR',
-    );
-  }
-}
-
-extension _WithValueEvalResult<T, N extends Map<String, dynamic>>
-    on EvaluationDetails<T> {
-  FlagEvaluationResult<N> toEvalResultWithJsonValue(N val) {
-    return FlagEvaluationResult(
-      flagKey: key,
-      value: val,
-      variant: variationId,
-      evaluatedAt: DateTime.now(),
-      evaluatorId: _providerName,
-      errorCode: error?.toErrorCode(),
-      errorMessage: error,
-      reason: error == null ? 'DEFAULT' : 'ERROR',
-    );
-  }
-}
-
-extension _ToErrorCode on String {
-  ErrorCode toErrorCode() {
-    if (contains('the key was not found in config JSON')) {
-      return ErrorCode.FLAG_NOT_FOUND;
-    } else if (contains('Config JSON is not present')) {
-      return ErrorCode.PARSE_ERROR;
-    } else if (contains('Setting type is invalid') ||
-        contains('type of a setting must match the type')) {
-      return ErrorCode.TYPE_MISMATCH;
-    } else {
-      return ErrorCode.GENERAL;
-    }
-  }
+extension CopyWith on ConfigCatOptions {
+  ConfigCatOptions copyWith({
+    String? baseUrl,
+    DataGovernance? dataGovernance,
+    PollingMode? pollingMode,
+    ConfigCatCache? cache,
+    ConfigCatLogger? logger,
+    Duration? connectTimeout,
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
+    FlagOverrides? override,
+    ConfigCatUser? defaultUser,
+    Hooks? hooks,
+    bool? offline,
+  }) => ConfigCatOptions(
+    baseUrl: baseUrl ?? this.baseUrl,
+    dataGovernance: dataGovernance ?? this.dataGovernance,
+    pollingMode: pollingMode ?? this.pollingMode,
+    cache: cache ?? this.cache,
+    logger: logger ?? this.logger,
+    connectTimeout: connectTimeout ?? this.connectTimeout,
+    sendTimeout: sendTimeout ?? this.sendTimeout,
+    receiveTimeout: receiveTimeout ?? this.receiveTimeout,
+    override: override ?? this.override,
+    defaultUser: defaultUser ?? this.defaultUser,
+    hooks: hooks ?? this.hooks,
+    offline: offline ?? this.offline,
+  );
 }

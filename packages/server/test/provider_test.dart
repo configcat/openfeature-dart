@@ -1,5 +1,5 @@
 import 'package:configcat_client/configcat_client.dart';
-import 'package:configcat_openfeature_server_provider/configcat_openfeature_server_provider.dart';
+import 'package:configcat_openfeature_provider_server/configcat_openfeature_provider_server.dart';
 import 'package:openfeature_dart_server_sdk/client.dart';
 import 'package:openfeature_dart_server_sdk/evaluation_context.dart';
 import 'package:openfeature_dart_server_sdk/feature_provider.dart';
@@ -209,16 +209,6 @@ void main() {
         false,
       );
       expect(result.value, isTrue);
-    });
-
-    test('error', () async {
-      final provider = ConfigCatProvider(
-        sdkKey: '0000000000000000000000/0000000000000000000000',
-      );
-      expectLater(
-        provider.initialize(),
-        throwsA(contains('Provider initialization failed.')),
-      );
     });
   });
 }

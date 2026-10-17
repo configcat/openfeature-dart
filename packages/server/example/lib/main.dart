@@ -1,10 +1,8 @@
 import 'dart:async';
 
 import 'package:configcat_client/configcat_client.dart';
-import 'package:configcat_openfeature_provider/configcat_openfeature_server_provider.dart';
-import 'package:openfeature_dart_server_sdk/client.dart';
+import 'package:configcat_openfeature_provider_server/configcat_openfeature_provider_server.dart';
 import 'package:openfeature_dart_server_sdk/evaluation_context.dart';
-import 'package:openfeature_dart_server_sdk/hooks.dart';
 import 'package:openfeature_dart_server_sdk/open_feature_api.dart';
 
 Future<void> main() async {
