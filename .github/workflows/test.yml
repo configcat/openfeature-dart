@@ -35,10 +35,16 @@ jobs:
       run: dart analyze
       
   test:
+    name: test (${{ matrix.package.name }}, Dart ${{ matrix.sdk-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
         sdk-version: [ stable, beta, dev ]
+        package:
+          - name: server
+            path: packages/openfeature_dart_server_sdk
+          - name: client
+            path: packages/openfeature_dart_client_sdk
     steps:
       - uses: actions/checkout@v7
 
@@ -51,11 +57,20 @@ jobs:
         run: dart pub get
 
       - name: Run tests
+        working-directory: ${{ matrix.package.path }}
         run: dart test
 
   publish-dry-run:
+    name: publish dry run (${{ matrix.package.name }}
     needs: [analyze-format, test]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - name: server
+            path: packages/openfeature_dart_server_sdk
+          - name: client
+            path: packages/openfeature_dart_client_sdk
     steps:
       - uses: actions/checkout@v7
 
@@ -66,4 +81,5 @@ jobs:
         run: dart pub get
 
       - name: Publish dry-run
+        working-directory: ${{ matrix.package.path }}
         run: dart pub publish --dry-run

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:configcat_client/configcat_client.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
@@ -48,40 +49,28 @@ class ConfigCatProvider
     String flagKey,
     bool defaultValue,
     EvaluationContext context,
-  ) {
-    // TODO: implement resolveBooleanValue
-    throw UnimplementedError();
-  }
+  ) => _eval(flagKey, defaultValue, context);
 
   @override
   ResolutionDetails<double> resolveDoubleValue(
     String flagKey,
     double defaultValue,
     EvaluationContext context,
-  ) {
-    // TODO: implement resolveDoubleValue
-    throw UnimplementedError();
-  }
+  ) => _eval(flagKey, defaultValue, context);
 
   @override
   ResolutionDetails<int> resolveIntegerValue(
     String flagKey,
     int defaultValue,
     EvaluationContext context,
-  ) {
-    // TODO: implement resolveIntegerValue
-    throw UnimplementedError();
-  }
+  ) => _eval(flagKey, defaultValue, context);
 
   @override
   ResolutionDetails<String> resolveStringValue(
     String flagKey,
     String defaultValue,
     EvaluationContext context,
-  ) {
-    // TODO: implement resolveStringValue
-    throw UnimplementedError();
-  }
+  ) => _eval(flagKey, defaultValue, context);
 
   @override
   ResolutionDetails<Map<String, Object?>> resolveStructureValue(
@@ -89,8 +78,31 @@ class ConfigCatProvider
     Map<String, Object?> defaultValue,
     EvaluationContext context,
   ) {
-    // TODO: implement resolveStructureValue
-    throw UnimplementedError();
+    final stringResult = _eval(flagKey, '', context);
+    if (stringResult.value.isEmpty) {
+      return ResolutionDetails(
+        value: defaultValue,
+        reason: stringResult.reason,
+        errorCode: stringResult.errorCode,
+        errorMessage: stringResult.errorMessage,
+      );
+    }
+    final decoded = jsonDecode(stringResult.value);
+    if (decoded == null) {
+      return ResolutionDetails(
+        value: defaultValue,
+        reason: 'ERROR',
+        errorCode: ErrorCode.typeMismatch,
+        errorMessage: 'Could not parse ${stringResult.value} as JSON',
+      );
+    }
+    return ResolutionDetails(
+      value: decoded,
+      variant: stringResult.variant,
+      errorCode: stringResult.errorCode,
+      errorMessage: stringResult.errorMessage,
+      reason: stringResult.reason,
+    );
   }
 
   @override
@@ -125,6 +137,21 @@ class ConfigCatProvider
     _client.close();
     await _events.close();
   }
+
+  ResolutionDetails<T> _eval<T>(
+    String flagKey,
+    T defaultValue,
+    EvaluationContext context,
+  ) {
+    final snapshot = _snapshot ?? _client.snapshot();
+    final user = _user ?? context.toUser();
+    final details = snapshot.getValueDetails(
+      key: flagKey,
+      defaultValue: defaultValue,
+      user: user,
+    );
+    return details.toResolutionDetails();
+  }
 }
 
 extension ToUser on EvaluationContext {
@@ -138,9 +165,22 @@ extension ToUser on EvaluationContext {
     }
     return ConfigCatUser(
       identifier: targetingKey ?? '',
-      email: getValue('Email')?.toString(),
-      country: getValue('Country')?.toString(),
+      email: getValue('Email')?.toString() ?? getValue('email')?.toString(),
+      country:
+          getValue('Country')?.toString() ?? getValue('country').toString(),
       custom: custom,
+    );
+  }
+}
+
+extension ToResolutionDetails<T> on EvaluationDetails<T> {
+  ResolutionDetails<T> toResolutionDetails() {
+    return ResolutionDetails(
+      value: value,
+      variant: variationId,
+      errorCode: errorCode.toErrorCode(),
+      errorMessage: error,
+      reason: error == null ? 'DEFAULT' : 'ERROR',
     );
   }
 }
