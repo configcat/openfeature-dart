@@ -42,9 +42,9 @@ jobs:
         sdk-version: [ stable, beta, dev ]
         package:
           - name: server
-            path: packages/openfeature_dart_server_sdk
+            path: packages/server
           - name: client
-            path: packages/openfeature_dart_client_sdk
+            path: packages/client
     steps:
       - uses: actions/checkout@v7
 
@@ -68,9 +68,9 @@ jobs:
       matrix:
         package:
           - name: server
-            path: packages/openfeature_dart_server_sdk
+            path: packages/server
           - name: client
-            path: packages/openfeature_dart_client_sdk
+            path: packages/client
     steps:
       - uses: actions/checkout@v7
 
