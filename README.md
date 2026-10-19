@@ -1,4 +1,4 @@
-# ConfigCat OpenFeature Providers for Dart
+# ConfigCat OpenFeature Providers for Dart [WIP]
 
 This repository is the Dart workspace for ConfigCat OpenFeature providers. Server and client providers are in separate packages with their own pubspec, changelog and documentation.
 
