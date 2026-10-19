@@ -23,8 +23,9 @@ the [ConfigCat Dart SDK](https://github.com/configcat/dart-sdk):
 
 ```dart
 import 'package:configcat_client/configcat_client.dart';
-import 'package:configcat_openfeature_client_provider/configcat_openfeature_client_provider.dart';
-import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
+import 'package:configcat_openfeature_server_provider/configcat_openfeature_server_provider.dart';
+import 'package:openfeature_dart_server_sdk/evaluation_context.dart';
+import 'package:openfeature_dart_server_sdk/open_feature_api.dart';
 
 Future<void> main() async {
   // Configure the provider.
