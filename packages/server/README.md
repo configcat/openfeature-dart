@@ -3,7 +3,7 @@
 [![pub package](https://img.shields.io/pub/v/configcat_openfeature_server_provider.svg)](https://pub.dev/packages/configcat_openfeature_server_provider)
 [![Dart server provider CI](https://github.com/configcat/openfeature-dart/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/configcat/openfeature-dart/actions/workflows/test.yml)
 
-This repository contains an OpenFeature provider that allows [ConfigCat](https://configcat.com) to be used with
+This package contains an OpenFeature provider that allows [ConfigCat](https://configcat.com) to be used with
 the [OpenFeature Dart Server SDK](https://github.com/open-feature/dart-sdk/tree/main/packages/openfeature_dart_server_sdk).
 
 ## Installation

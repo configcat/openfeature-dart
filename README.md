@@ -9,7 +9,7 @@ This repository is the Dart workspace for ConfigCat OpenFeature providers. Serve
 | [`configcat_openfeature_client_provider`](packages/client) | [![pub package](https://img.shields.io/pub/v/configcat_openfeature_client_provider.svg)](https://pub.dev/packages/configcat_openfeature_client_provider) | 
 | [`configcat_openfeature_server_provider`](packages/server) | [![pub package](https://img.shields.io/pub/v/configcat_openfeature_server_provider.svg)](https://pub.dev/packages/configcat_openfeature_server_provider) |
 
-See each package's README for more configuration and usage.
+See each package's README for more details about the configuration and usage.
 
 ## Need help?
 
