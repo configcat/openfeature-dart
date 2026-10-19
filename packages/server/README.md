@@ -10,6 +10,8 @@ the [OpenFeature Dart Server SDK](https://github.com/open-feature/dart-sdk/tree/
 
 ```yaml
 dependencies:
+  configcat_client: ^5.0.0
+  openfeature_dart_server_sdk: ^0.1.0
   configcat_openfeature_server_provider: ^0.1.0
 ```
 

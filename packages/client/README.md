@@ -10,6 +10,8 @@ the [OpenFeature Dart Client SDK](https://github.com/open-feature/dart-sdk/tree/
 
 ```yaml
 dependencies:
+  configcat_client: ^5.0.0
+  openfeature_dart_client_sdk: ^0.0.1
   configcat_openfeature_client_provider: ^0.1.0
 ```
 
