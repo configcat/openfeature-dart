@@ -8,9 +8,17 @@ on:
 
 jobs:
   publish:
+    name: publish ${{ matrix.package.name }} package
     runs-on: ubuntu-latest
     container:
       image:  google/dart:latest
+    strategy:
+      matrix:
+        package:
+          - name: server
+            path: packages/server
+          - name: client
+            path: packages/client
     steps:
       - uses: actions/checkout@v7
       - name: Setup credentials
@@ -26,4 +34,5 @@ jobs:
           }
           EOF
       - name: Publish package
+        working-directory: ${{ matrix.package.path }}
         run: pub publish -f
