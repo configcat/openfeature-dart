@@ -4,6 +4,26 @@ import 'dart:convert';
 import 'package:configcat_client/configcat_client.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
+/// ConfigCat OpenFeature provider.
+///
+/// Example:
+/// ```dart
+/// final provider = ConfigCatProvider(
+///   sdkKey: '#YOUR-SDK-KEY#',
+/// );
+///
+/// await OpenFeatureAPI.instance.setProviderAndWait(provider);
+/// await OpenFeatureAPI.instance.setEvaluationContextAndWait(
+///    EvaluationContext(targetingKey: '#UNIQUE-USER-IDENTIFIER'),
+/// );
+///
+/// final client = OpenFeatureAPI.instance.getClient();
+///
+/// final isAwesomeFeatureEnabled = client.getBooleanValue(
+///   'isAwesomeFeatureEnabled',
+///   false,
+/// );
+/// ```
 class ConfigCatProvider
     implements
         FeatureProvider,
@@ -180,7 +200,7 @@ extension ToResolutionDetails<T> on EvaluationDetails<T> {
       variant: variationId,
       errorCode: errorCode.toErrorCode(),
       errorMessage: error,
-      reason: error == null ? 'DEFAULT' : 'ERROR',
+      reason: errorCode == EvaluationErrorCode.none ? 'DEFAULT' : 'ERROR',
     );
   }
 }

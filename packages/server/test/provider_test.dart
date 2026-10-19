@@ -1,5 +1,5 @@
 import 'package:configcat_client/configcat_client.dart';
-import 'package:configcat_openfeature_provider_server/configcat_openfeature_provider_server.dart';
+import 'package:configcat_openfeature_server_provider/configcat_openfeature_server_provider.dart';
 import 'package:openfeature_dart_server_sdk/client.dart';
 import 'package:openfeature_dart_server_sdk/evaluation_context.dart';
 import 'package:openfeature_dart_server_sdk/feature_provider.dart';
@@ -130,36 +130,48 @@ void main() {
     });
   });
 
-  group('provider tests', () {
+  group('details tests', () {
     test('bool', () async {
-      final result = await client.provider.getBooleanFlag(
+      final result = await client.getBooleanEvaluationDetails(
         'enabledFeature',
-        false,
+        defaultValue: false,
       );
       expect(result.value, isTrue);
       expect(result.variant, 'v-enabled');
       expect(result.reason, 'DEFAULT');
     });
     test('int', () async {
-      final result = await client.provider.getIntegerFlag('intSetting', 0);
+      final result = await client.getIntegerEvaluationDetails(
+        'intSetting',
+        defaultValue: 0,
+      );
       expect(result.value, equals(5));
       expect(result.variant, 'v-int');
       expect(result.reason, 'DEFAULT');
     });
     test('double', () async {
-      final result = await client.provider.getDoubleFlag('doubleSetting', 0.0);
+      final result = await client.getDoubleEvaluationDetails(
+        'doubleSetting',
+        defaultValue: 0.0,
+      );
       expect(result.value, equals(1.2));
       expect(result.variant, 'v-double');
       expect(result.reason, 'DEFAULT');
     });
     test('string', () async {
-      final result = await client.provider.getStringFlag('stringSetting', '');
+      final result = await client.getStringEvaluationDetails(
+        'stringSetting',
+        defaultValue: '',
+      );
       expect(result.value, equals('test'));
       expect(result.variant, 'v-string');
       expect(result.reason, 'DEFAULT');
     });
     test('object', () async {
-      final result = await client.provider.getObjectFlag('objectSetting', {});
+      final result = await client.getObjectEvaluationDetails(
+        'objectSetting',
+        defaultValue: {},
+      );
       expect(result.value['bool_field'], isTrue);
       expect(result.value['text_field'], equals('value'));
       expect(result.variant, 'v-object');

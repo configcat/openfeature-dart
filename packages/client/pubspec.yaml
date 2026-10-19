@@ -1,4 +1,4 @@
-name: configcat_openfeature_provider_client
+name: configcat_openfeature_client_provider
 description: >-
   ConfigCat OpenFeature Client Provider for Dart. ConfigCat is a hosted feature flag service that lets you manage feature toggles across frontend, backend, mobile, desktop apps.
 version: 0.1.0

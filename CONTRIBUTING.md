@@ -1,6 +1,6 @@
-# Contributing to the ConfigCat OpenFeature Provider for Dart
+# Contributing to the ConfigCat OpenFeature Providers for Dart
 
-ConfigCat OpenFeature Provider for Dart is an open source project. Feedback and contribution are welcome. Contributions are made to this repo via Issues and Pull Requests.
+ConfigCat OpenFeature Providers for Dart is an open source project. Feedback and contribution are welcome. Contributions are made to this repo via Issues and Pull Requests.
 
 ## Submitting bug reports and feature requests
 
@@ -34,6 +34,8 @@ In general, we follow the ["fork-and-pull" Git workflow](https://github.com/susa
   ```
 
 ## Running tests
+
+Within the actual package directory use the following commands:
 
 - With Dart SDK:
 

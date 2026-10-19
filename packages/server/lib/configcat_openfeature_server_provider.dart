@@ -48,19 +48,12 @@ class ConfigCatProvider implements FeatureProvider {
     _client = ConfigCatClient.get(sdkKey: sdkKey, options: opts);
   }
 
-  /// Gets the provider configuration.
   @override
   ProviderConfig get config => ProviderConfig();
 
-  /// Connects to the provider. [ConfigCatProvider] doesn't implement this function.
   @override
   Future<void> connect() async {}
 
-  /// Evaluates a boolean feature flag.
-  ///
-  /// [flagKey] - The feature flag key to evaluate.
-  /// [defaultValue] - In case of any failure, this value will be returned.
-  /// [context] - Evaluation context for targeting.
   @override
   Future<FlagEvaluationResult<bool>> getBooleanFlag(
     String flagKey,
@@ -76,11 +69,6 @@ class ConfigCatProvider implements FeatureProvider {
     return details.toEvalResult();
   }
 
-  /// Evaluates a double setting.
-  ///
-  /// [flagKey] - The setting key to evaluate.
-  /// [defaultValue] - In case of any failure, this value will be returned.
-  /// [context] - Evaluation context for targeting.
   @override
   Future<FlagEvaluationResult<double>> getDoubleFlag(
     String flagKey,
@@ -96,11 +84,6 @@ class ConfigCatProvider implements FeatureProvider {
     return details.toEvalResult();
   }
 
-  /// Evaluates an integer setting.
-  ///
-  /// [flagKey] - The setting key to evaluate.
-  /// [defaultValue] - In case of any failure, this value will be returned.
-  /// [context] - Evaluation context for targeting.
   @override
   Future<FlagEvaluationResult<int>> getIntegerFlag(
     String flagKey,
@@ -116,11 +99,6 @@ class ConfigCatProvider implements FeatureProvider {
     return details.toEvalResult();
   }
 
-  /// Evaluates an object setting.
-  ///
-  /// [flagKey] - The setting key to evaluate.
-  /// [defaultValue] - In case of any failure, this value will be returned.
-  /// [context] - Evaluation context for targeting.
   @override
   Future<FlagEvaluationResult<Map<String, dynamic>>> getObjectFlag(
     String flagKey,
@@ -148,11 +126,6 @@ class ConfigCatProvider implements FeatureProvider {
     return stringDetails.toEvalResultWithJsonValue(decoded);
   }
 
-  /// Evaluates a string setting.
-  ///
-  /// [flagKey] - The setting key to evaluate.
-  /// [defaultValue] - In case of any failure, this value will be returned.
-  /// [context] - Evaluation context for targeting.
   @override
   Future<FlagEvaluationResult<String>> getStringFlag(
     String flagKey,
@@ -168,9 +141,6 @@ class ConfigCatProvider implements FeatureProvider {
     return details.toEvalResult();
   }
 
-  /// Initializes the provider.
-  ///
-  /// [config] - Optional initialization context.
   @override
   Future<void> initialize([Map<String, dynamic>? config]) async {
     _initialContext = config;
@@ -181,22 +151,18 @@ class ConfigCatProvider implements FeatureProvider {
     }
   }
 
-  /// Gets the provider metadata.
   @override
   ProviderMetadata get metadata => ProviderMetadata(name: _providerName);
 
-  /// Gets the provider name.
   @override
   String get name => metadata.name;
 
-  /// Shuts down the provider.
   @override
   Future<void> shutdown() async {
     _client.close();
     _state = ProviderState.SHUTDOWN;
   }
 
-  /// Get the provider state.
   @override
   ProviderState get state => _state;
 

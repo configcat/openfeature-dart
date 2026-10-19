@@ -1,5 +1,5 @@
 import 'package:configcat_client/configcat_client.dart';
-import 'package:configcat_openfeature_provider_client/configcat_openfeature_provider_client.dart';
+import 'package:configcat_openfeature_client_provider/configcat_openfeature_client_provider.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 Future<void> main() async {
@@ -16,7 +16,7 @@ Future<void> main() async {
 
   await OpenFeatureAPI.instance.setProviderAndWait(provider);
 
-  final client = OpenFeatureAPI.instance.getClient('my-app');
+  final client = OpenFeatureAPI.instance.getClient();
 
   final isAwesomeFeatureEnabled = client.getBooleanValue(
     'isAwesomeFeatureEnabled',
