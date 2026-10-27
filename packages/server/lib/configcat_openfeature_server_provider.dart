@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:configcat_client/configcat_client.dart';
 import 'package:openfeature_dart_server_sdk/feature_provider.dart';
 
-const _providerName = 'ConfigCatProvider';
+const _providerName = 'ConfigCat Server Provider';
 
 /// ConfigCat OpenFeature provider.
 ///
@@ -37,14 +37,18 @@ class ConfigCatProvider implements FeatureProvider {
     required String sdkKey,
     ConfigCatOptions options = ConfigCatOptions.defaultOptions,
   }) {
-    final hooks = options.hooks ?? Hooks();
-    hooks.addOnConfigChanged(
-      (_, snapshot) => {
-        if (snapshot.cacheState != ClientCacheState.noFlagData && !_initialized)
-          {_initialized = true, _state = ProviderState.READY},
+    final opts = options.copyWith(
+      hooks: (Hooks hooks) {
+        options.hooks?.call(hooks);
+        hooks.addOnConfigChanged(
+          (_, snapshot) => {
+            if (snapshot.cacheState != ClientCacheState.noFlagData &&
+                !_initialized)
+              {_initialized = true, _state = ProviderState.READY},
+          },
+        );
       },
     );
-    final opts = options.copyWith(hooks: hooks);
     _client = ConfigCatClient.get(sdkKey: sdkKey, options: opts);
   }
 
@@ -59,45 +63,21 @@ class ConfigCatProvider implements FeatureProvider {
     String flagKey,
     bool defaultValue, {
     Map<String, dynamic>? context,
-  }) async {
-    final user = _userFromContext(context);
-    final details = await _client.getValueDetails(
-      key: flagKey,
-      defaultValue: defaultValue,
-      user: user,
-    );
-    return details.toEvalResult();
-  }
+  }) => _eval(flagKey, defaultValue, context);
 
   @override
   Future<FlagEvaluationResult<double>> getDoubleFlag(
     String flagKey,
     double defaultValue, {
     Map<String, dynamic>? context,
-  }) async {
-    final user = _userFromContext(context);
-    final details = await _client.getValueDetails(
-      key: flagKey,
-      defaultValue: defaultValue,
-      user: user,
-    );
-    return details.toEvalResult();
-  }
+  }) => _eval(flagKey, defaultValue, context);
 
   @override
   Future<FlagEvaluationResult<int>> getIntegerFlag(
     String flagKey,
     int defaultValue, {
     Map<String, dynamic>? context,
-  }) async {
-    final user = _userFromContext(context);
-    final details = await _client.getValueDetails(
-      key: flagKey,
-      defaultValue: defaultValue,
-      user: user,
-    );
-    return details.toEvalResult();
-  }
+  }) => _eval(flagKey, defaultValue, context);
 
   @override
   Future<FlagEvaluationResult<Map<String, dynamic>>> getObjectFlag(
@@ -105,25 +85,41 @@ class ConfigCatProvider implements FeatureProvider {
     Map<String, dynamic> defaultValue, {
     Map<String, dynamic>? context,
   }) async {
-    final user = _userFromContext(context);
-    final stringDetails = await _client.getValueDetails(
-      key: flagKey,
-      defaultValue: '',
-      user: user,
-    );
-    if (stringDetails.value.isEmpty) {
-      return Future.value(
-        FlagEvaluationResult.error(
-          flagKey,
-          defaultValue,
-          stringDetails.errorCode.toErrorCode() ?? ErrorCode.GENERAL,
-          stringDetails.error ?? 'Evaluation failed.',
-          evaluatorId: _providerName,
-        ),
+    final stringResult = await _eval(flagKey, '', context);
+    if (stringResult.value.isEmpty) {
+      return defaultValue.asErrorResult(
+        flagKey,
+        stringResult.errorMessage,
+        stringResult.errorCode,
       );
     }
-    final decoded = jsonDecode(stringDetails.value);
-    return stringDetails.toEvalResultWithJsonValue(decoded);
+    Object? decoded;
+    try {
+      decoded = jsonDecode(stringResult.value);
+    } on FormatException {
+      return defaultValue.asErrorResult(
+        flagKey,
+        'Value could not parsed as JSON: ${stringResult.value}',
+        ErrorCode.PARSE_ERROR,
+      );
+    }
+    if (decoded is! Map) {
+      return defaultValue.asErrorResult(
+        flagKey,
+        'Parsed JSON is not a valid Map: ${stringResult.value}',
+        ErrorCode.TYPE_MISMATCH,
+      );
+    }
+    return FlagEvaluationResult(
+      flagKey: flagKey,
+      value: Map<String, dynamic>.from(decoded),
+      variant: stringResult.variant,
+      evaluatedAt: DateTime.now(),
+      evaluatorId: _providerName,
+      errorCode: stringResult.errorCode,
+      errorMessage: stringResult.errorMessage,
+      reason: stringResult.reason,
+    );
   }
 
   @override
@@ -131,15 +127,7 @@ class ConfigCatProvider implements FeatureProvider {
     String flagKey,
     String defaultValue, {
     Map<String, dynamic>? context,
-  }) async {
-    final user = _userFromContext(context);
-    final details = await _client.getValueDetails(
-      key: flagKey,
-      defaultValue: defaultValue,
-      user: user,
-    );
-    return details.toEvalResult();
-  }
+  }) => _eval(flagKey, defaultValue, context);
 
   @override
   Future<void> initialize([Map<String, dynamic>? config]) async {
@@ -176,6 +164,20 @@ class ConfigCatProvider implements FeatureProvider {
     Map<String, dynamic>? evaluationContext,
     TrackingEventDetails? trackingDetails,
   }) async {}
+
+  Future<FlagEvaluationResult<T>> _eval<T>(
+    String flagKey,
+    T defaultValue,
+    Map<String, dynamic>? context,
+  ) async {
+    final user = _userFromContext(context);
+    final details = await _client.getValueDetails(
+      key: flagKey,
+      defaultValue: defaultValue,
+      user: user,
+    );
+    return details.toEvalResult();
+  }
 }
 
 extension ToEvalResult<T> on EvaluationDetails<T> {
@@ -188,23 +190,25 @@ extension ToEvalResult<T> on EvaluationDetails<T> {
       evaluatorId: _providerName,
       errorCode: errorCode.toErrorCode(),
       errorMessage: error,
-      reason: error == null ? 'DEFAULT' : 'ERROR',
+      reason: toReason(),
     );
   }
 }
 
-extension WithValueEvalResult<T, N extends Map<String, dynamic>>
-    on EvaluationDetails<T> {
-  FlagEvaluationResult<N> toEvalResultWithJsonValue(N val) {
+extension AsErrorResult<T> on T {
+  FlagEvaluationResult<T> asErrorResult(
+    String flagKey,
+    String? errorMessage,
+    ErrorCode? errorCode,
+  ) {
     return FlagEvaluationResult(
-      flagKey: key,
-      value: val,
-      variant: variationId,
+      flagKey: flagKey,
+      value: this,
+      errorCode: errorCode,
+      errorMessage: errorMessage,
+      reason: 'ERROR',
       evaluatedAt: DateTime.now(),
       evaluatorId: _providerName,
-      errorCode: errorCode.toErrorCode(),
-      errorMessage: error,
-      reason: error == null ? 'DEFAULT' : 'ERROR',
     );
   }
 }
@@ -223,6 +227,18 @@ extension ToErrorCode on EvaluationErrorCode {
       default:
         return ErrorCode.GENERAL;
     }
+  }
+}
+
+extension ToReason<T> on EvaluationDetails<T> {
+  String toReason() {
+    if (errorCode != EvaluationErrorCode.none) {
+      return 'ERROR';
+    }
+    if (matchedTargetingRule != null || matchedPercentageOption != null) {
+      return 'TARGETING_MATCH';
+    }
+    return 'DEFAULT';
   }
 }
 
@@ -267,7 +283,7 @@ extension CopyWith on ConfigCatOptions {
     Duration? sendTimeout,
     FlagOverrides? override,
     ConfigCatUser? defaultUser,
-    Hooks? hooks,
+    Function(Hooks)? hooks,
     bool? offline,
   }) => ConfigCatOptions(
     baseUrl: baseUrl ?? this.baseUrl,
@@ -275,6 +291,7 @@ extension CopyWith on ConfigCatOptions {
     pollingMode: pollingMode ?? this.pollingMode,
     cache: cache ?? this.cache,
     logger: logger ?? this.logger,
+    httpClientAdapter: httpClientAdapter,
     connectTimeout: connectTimeout ?? this.connectTimeout,
     sendTimeout: sendTimeout ?? this.sendTimeout,
     receiveTimeout: receiveTimeout ?? this.receiveTimeout,

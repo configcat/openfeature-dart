@@ -30,10 +30,12 @@ class ConfigCatProvider
         InitializableProvider,
         ContextReconciliationProvider,
         ProviderEventSource,
-        ShutdownProvider {
+        ShutdownProvider,
+        DomainScopedProvider {
   final StreamController<ProviderEvent> _events =
       StreamController<ProviderEvent>.broadcast(sync: true);
   bool _initialized = false;
+  bool _closed = false;
   ConfigCatUser? _user;
   ConfigCatClientSnapshot? _snapshot;
   late final ConfigCatClient _client;
@@ -46,23 +48,25 @@ class ConfigCatProvider
     required String sdkKey,
     ConfigCatOptions options = ConfigCatOptions.defaultOptions,
   }) {
-    final hooks = options.hooks ?? Hooks();
-    hooks.addOnConfigChanged(
-      (_, snapshot) => {
-        _snapshot = snapshot,
-        if (snapshot.cacheState != ClientCacheState.noFlagData && !_initialized)
-          {
-            _initialized = true,
-            _events.add(ProviderEvent(type: ProviderEventType.ready)),
-          },
+    final opts = options.copyWith(
+      hooks: (Hooks hooks) {
+        options.hooks?.call(hooks);
+        hooks.addOnConfigChanged((_, snapshot) {
+          _snapshot = snapshot;
+          if (snapshot.cacheState != ClientCacheState.noFlagData &&
+              !_initialized) {
+            _initialized = true;
+            _events.add(ProviderEvent(type: ProviderEventType.ready));
+          }
+        });
       },
     );
-    final opts = options.copyWith(hooks: hooks);
     _client = ConfigCatClient.get(sdkKey: sdkKey, options: opts);
   }
 
   @override
-  ProviderMetadata get metadata => ProviderMetadata(name: 'ConfigCatProvider');
+  ProviderMetadata get metadata =>
+      ProviderMetadata(name: 'ConfigCat Client Provider');
 
   @override
   ResolutionDetails<bool> resolveBooleanValue(
@@ -100,24 +104,29 @@ class ConfigCatProvider
   ) {
     final stringResult = _eval(flagKey, '', context);
     if (stringResult.value.isEmpty) {
-      return ResolutionDetails(
-        value: defaultValue,
-        reason: stringResult.reason,
-        errorCode: stringResult.errorCode,
-        errorMessage: stringResult.errorMessage,
+      return defaultValue.asErrorResult(
+        stringResult.errorMessage,
+        stringResult.errorCode,
       );
     }
-    final decoded = jsonDecode(stringResult.value);
-    if (decoded == null) {
-      return ResolutionDetails(
-        value: defaultValue,
-        reason: 'ERROR',
-        errorCode: ErrorCode.typeMismatch,
-        errorMessage: 'Could not parse ${stringResult.value} as JSON',
+    Object? decoded;
+    try {
+      decoded = jsonDecode(stringResult.value);
+    } on FormatException {
+      return defaultValue.asErrorResult(
+        'Value could not parsed as JSON: ${stringResult.value}',
+        ErrorCode.parseError,
       );
     }
+    if (decoded is! Map) {
+      return defaultValue.asErrorResult(
+        'Parsed JSON is not a valid Map: ${stringResult.value}',
+        ErrorCode.typeMismatch,
+      );
+    }
+
     return ResolutionDetails(
-      value: decoded,
+      value: Map<String, Object?>.from(decoded),
       variant: stringResult.variant,
       errorCode: stringResult.errorCode,
       errorMessage: stringResult.errorMessage,
@@ -144,6 +153,9 @@ class ConfigCatProvider
     EvaluationContext previousContext,
     EvaluationContext newContext,
   ) {
+    if (_closed) {
+      throw StateError('${metadata.name} is shut down.');
+    }
     _user = newContext.toUser();
     final keys = _snapshot?.getAllKeys() ?? [];
     _events.add(
@@ -154,6 +166,10 @@ class ConfigCatProvider
 
   @override
   Future<void> shutdown() async {
+    if (_closed) {
+      return;
+    }
+    _closed = true;
     _client.close();
     await _events.close();
   }
@@ -163,6 +179,14 @@ class ConfigCatProvider
     T defaultValue,
     EvaluationContext context,
   ) {
+    if (_closed) {
+      return ResolutionDetails<T>(
+        value: defaultValue,
+        errorCode: ErrorCode.providerNotReady,
+        errorMessage: '${metadata.name} is shut down.',
+        reason: 'ERROR',
+      );
+    }
     final snapshot = _snapshot ?? _client.snapshot();
     final user = _user ?? context.toUser();
     final details = snapshot.getValueDetails(
@@ -187,7 +211,7 @@ extension ToUser on EvaluationContext {
       identifier: targetingKey ?? '',
       email: getValue('Email')?.toString() ?? getValue('email')?.toString(),
       country:
-          getValue('Country')?.toString() ?? getValue('country').toString(),
+          getValue('Country')?.toString() ?? getValue('country')?.toString(),
       custom: custom,
     );
   }
@@ -200,8 +224,34 @@ extension ToResolutionDetails<T> on EvaluationDetails<T> {
       variant: variationId,
       errorCode: errorCode.toErrorCode(),
       errorMessage: error,
-      reason: errorCode == EvaluationErrorCode.none ? 'DEFAULT' : 'ERROR',
+      reason: toReason(),
     );
+  }
+}
+
+extension AsErrorResult<T> on T {
+  ResolutionDetails<T> asErrorResult(
+    String? errorMessage,
+    ErrorCode? errorCode,
+  ) {
+    return ResolutionDetails(
+      value: this,
+      errorCode: errorCode,
+      errorMessage: errorMessage,
+      reason: 'ERROR',
+    );
+  }
+}
+
+extension ToReason<T> on EvaluationDetails<T> {
+  String toReason() {
+    if (errorCode != EvaluationErrorCode.none) {
+      return 'ERROR';
+    }
+    if (matchedTargetingRule != null || matchedPercentageOption != null) {
+      return 'TARGETING_MATCH';
+    }
+    return 'DEFAULT';
   }
 }
 
@@ -234,7 +284,7 @@ extension CopyWith on ConfigCatOptions {
     Duration? sendTimeout,
     FlagOverrides? override,
     ConfigCatUser? defaultUser,
-    Hooks? hooks,
+    Function(Hooks)? hooks,
     bool? offline,
   }) => ConfigCatOptions(
     baseUrl: baseUrl ?? this.baseUrl,
@@ -242,6 +292,7 @@ extension CopyWith on ConfigCatOptions {
     pollingMode: pollingMode ?? this.pollingMode,
     cache: cache ?? this.cache,
     logger: logger ?? this.logger,
+    httpClientAdapter: httpClientAdapter,
     connectTimeout: connectTimeout ?? this.connectTimeout,
     sendTimeout: sendTimeout ?? this.sendTimeout,
     receiveTimeout: receiveTimeout ?? this.receiveTimeout,

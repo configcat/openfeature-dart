@@ -29,7 +29,7 @@ void main() {
 
   group('metadata tests', () {
     test('name', () async {
-      expect(client.providerMetadata.name, equals('ConfigCatProvider'));
+      expect(client.providerMetadata.name, equals('ConfigCat Client Provider'));
     });
 
     test('state', () async {
@@ -86,6 +86,15 @@ void main() {
       expect(user.getAttribute('custom3'), equals(1.2));
     });
 
+    test('user only id', () {
+      final ctx = EvaluationContext(targetingKey: '1234');
+
+      final user = ctx.toUser()!;
+      expect(user.identifier, equals('1234'));
+      expect(user.getAttribute('Email'), isNull);
+      expect(user.getAttribute('Country'), isNull);
+    });
+
     test('eval with user', () async {
       await api.setEvaluationContextAndWait(
         EvaluationContext(targetingKey: 'example@matching.com'),
@@ -100,8 +109,9 @@ void main() {
           attributes: {'custom-anything': 'something'},
         ),
       );
-      final customResult = client.getBooleanValue('disabledFeature', false);
-      expect(customResult, isTrue);
+      final customResult = client.getBooleanDetails('disabledFeature', false);
+      expect(customResult.value, isTrue);
+      expect(customResult.reason, equals('TARGETING_MATCH'));
     });
   });
 
@@ -160,6 +170,20 @@ void main() {
           'The type of a setting must match the type of the specified default value',
         ),
       );
+    });
+    test('object not json', () {
+      final result = client.getStructureDetails('notJson', {});
+      expect(result.value, {});
+      expect(result.errorCode, ErrorCode.parseError);
+      expect(result.errorMessage, 'Value could not parsed as JSON: not json');
+      expect(result.reason, 'ERROR');
+    });
+    test('object not map', () {
+      final result = client.getStructureDetails('jsonArray', {});
+      expect(result.value, {});
+      expect(result.errorCode, ErrorCode.typeMismatch);
+      expect(result.errorMessage, 'Parsed JSON is not a valid Map: [1,2]');
+      expect(result.reason, 'ERROR');
     });
   });
 

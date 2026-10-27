@@ -64,6 +64,20 @@
             "v": {
                 "s": "{ \"bool_field\": true, \"text_field\": \"value\" }"
             }
+        },
+        "notJson": {
+            "t": 1,
+            "i": "v-not-json",
+            "v": {
+                "s": "not json"
+            }
+        },
+        "jsonArray": {
+            "t": 1,
+            "i": "v-json-array",
+            "v": {
+                "s": "[1,2]"
+            }
         }
     }
 }

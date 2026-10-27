@@ -32,7 +32,7 @@ void main() {
 
   group('metadata tests', () {
     test('name', () async {
-      expect(client.provider.name, equals('ConfigCatProvider'));
+      expect(client.provider.name, equals('ConfigCat Server Provider'));
       expect(client.provider.metadata.name, client.provider.name);
     });
 
@@ -102,6 +102,15 @@ void main() {
       expect(user.getAttribute('custom3'), equals(1.2));
     });
 
+    test('user only id', () {
+      final ctx = EvaluationContext(attributes: {'targetingKey': '1234'});
+
+      final user = ctx.attributes.toUser()!;
+      expect(user.identifier, equals('1234'));
+      expect(user.getAttribute('Email'), isNull);
+      expect(user.getAttribute('Country'), isNull);
+    });
+
     test('eval with user', () async {
       final ctx = EvaluationContext(
         attributes: {'targetingKey': 'example@matching.com'},
@@ -121,12 +130,13 @@ void main() {
         },
       );
 
-      final customResult = await client.getBooleanFlag(
+      final customResult = await client.getBooleanEvaluationDetails(
         'disabledFeature',
         defaultValue: false,
         context: customCtx,
       );
-      expect(customResult, isTrue);
+      expect(customResult.value, isTrue);
+      expect(customResult.reason, equals('TARGETING_MATCH'));
     });
   });
 
@@ -206,6 +216,26 @@ void main() {
           'The type of a setting must match the type of the specified default value',
         ),
       );
+    });
+    test('object not json', () async {
+      final result = await client.getObjectEvaluationDetails(
+        'notJson',
+        defaultValue: {},
+      );
+      expect(result.value, {});
+      expect(result.errorCode, ErrorCode.PARSE_ERROR);
+      expect(result.errorMessage, 'Value could not parsed as JSON: not json');
+      expect(result.reason, 'ERROR');
+    });
+    test('object not map', () async {
+      final result = await client.getObjectEvaluationDetails(
+        'jsonArray',
+        defaultValue: {},
+      );
+      expect(result.value, {});
+      expect(result.errorCode, ErrorCode.TYPE_MISMATCH);
+      expect(result.errorMessage, 'Parsed JSON is not a valid Map: [1,2]');
+      expect(result.reason, 'ERROR');
     });
   });
 
