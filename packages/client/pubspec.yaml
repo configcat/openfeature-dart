@@ -13,7 +13,7 @@ resolution: workspace
 
 dependencies:
   openfeature_dart_client_sdk: ^0.0.1
-  configcat_client: ^5.1.0
+  configcat_client: ^6.0.0
 
 dev_dependencies:
   test: ^1.26.3
